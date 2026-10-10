@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f7efe4" />
+  <title>盆の连连看🧋</title>
+  <link rel="stylesheet" href="css/style.css" />
+
+<style id="ambient-background-style">
+  /* 全局动态背景：固定在页面底层，不挡按钮和棋盘 */
+  .ambient-bg {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app-shell {
+    position: relative;
+    z-index: 1;
+    background: transparent !important;
+  }
+
+  .screen {
+    position: relative;
+    z-index: 1;
+    background: transparent !important;
+  }
+
+  .modal {
+    z-index: 50;
+  }
+
+  /* 大泡泡 */
+  .ambient-bg .bubble {
+    position: absolute;
+    display: block;
+    border-radius: 50%;
+    border: 1.5px solid rgba(187, 118, 92, 0.24);
+    border-radius: 54% 46% 58% 42% / 48% 55% 45% 52%;
+    background:
+      radial-gradient(circle at 30% 28%,
+        rgba(255,255,255,0.78) 0 10%,
+        rgba(247,218,201,0.40) 34%,
+        rgba(213,163,139,0.18) 66%,
+        rgba(255,255,255,0.04) 74%);
+    box-shadow:
+      inset 0 0 22px rgba(255,255,255,0.35),
+      0 8px 28px rgba(151, 93, 70, 0.06);
+    opacity: 0.78;
+    animation: penBubbleFloat 10s ease-in-out infinite alternate;
+  }
+
+  .ambient-bg .b1 { width: 104px; height: 104px; left: 3%;  top: 15%; animation-duration: 13s; }
+  .ambient-bg .b2 { width: 58px;  height: 58px;  left: 12%; bottom: 13%; animation-duration: 9s;  animation-delay: -3s; }
+  .ambient-bg .b3 { width: 126px; height: 126px; right: 2%; top: 20%; animation-duration: 15s; animation-delay: -7s; }
+  .ambient-bg .b4 { width: 72px;  height: 72px;  right: 12%; bottom: 8%; animation-duration: 11s; animation-delay: -5s; }
+  .ambient-bg .b5 { width: 46px;  height: 46px;  left: 43%; top: 5%; animation-duration: 8s; animation-delay: -2s; }
+  .ambient-bg .b6 { width: 82px;  height: 82px;  left: 63%; bottom: 15%; animation-duration: 14s; animation-delay: -9s; }
+
+  /* 波点云 */
+  .ambient-bg .dot-cloud {
+    position: absolute;
+    display: block;
+    width: 170px;
+    height: 170px;
+    opacity: 0.32;
+    background-image:
+      radial-gradient(circle, rgba(173, 105, 80, 0.42) 0 2px, transparent 2.4px);
+    background-size: 18px 18px;
+    mask-image: radial-gradient(circle, #000 15%, transparent 72%);
+    -webkit-mask-image: radial-gradient(circle, #000 15%, transparent 72%);
+    animation: penDotDrift 15s ease-in-out infinite alternate;
+  }
+
+  .ambient-bg .d1 { left: -34px; bottom: 24%; transform: rotate(7deg); }
+  .ambient-bg .d2 { right: -28px; top: 47%; transform: rotate(-10deg); animation-delay: -6s; }
+
+  /* 小珍珠 */
+  .ambient-bg .pearl {
+    position: absolute;
+    display: block;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    background:
+      radial-gradient(circle at 32% 28%,
+        rgba(255,255,255,0.8) 0 14%,
+        rgba(170,110,86,0.42) 34%,
+        rgba(123,77,61,0.22) 100%);
+    box-shadow: 0 4px 12px rgba(110,70,54,0.10);
+    opacity: 0.62;
+    animation: penPearlFloat 7s ease-in-out infinite alternate;
+  }
+
+  .ambient-bg .p1 { left: 8%;  top: 44%; animation-delay: -1s; }
+  .ambient-bg .p2 { left: 31%; bottom: 8%; width: 12px; height: 12px; animation-delay: -4s; }
+  .ambient-bg .p3 { right: 8%; top: 66%; width: 20px; height: 20px; animation-delay: -6s; }
+  .ambient-bg .p4 { right: 27%; top: 11%; width: 11px; height: 11px; animation-delay: -2s; }
+  .ambient-bg .p5 { left: 70%; top: 78%; width: 14px; height: 14px; animation-delay: -5s; }
+
+  @keyframes penBubbleFloat {
+    0%   { transform: translate3d(0,0,0) scale(1); }
+    50%  { transform: translate3d(12px,-18px,0) scale(1.035); }
+    100% { transform: translate3d(-9px,13px,0) scale(0.985); }
+  }
+
+  @keyframes penDotDrift {
+    0%   { translate: 0 0; }
+    100% { translate: 18px -20px; }
+  }
+
+  @keyframes penPearlFloat {
+    0%   { transform: translate3d(0,0,0) scale(1); }
+    50%  { transform: translate3d(6px,-13px,0) scale(1.09); }
+    100% { transform: translate3d(-5px,8px,0) scale(0.96); }
+  }
+
+  /* 声音按钮仍保证全页面可见 */
+  .global-settings-button {
+    position: fixed;
+    top: max(14px, env(safe-area-inset-top));
+    right: max(14px, env(safe-area-inset-right));
+    z-index: 40;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgba(94,70,58,0.12);
+    border-radius: 15px;
+    background: rgba(255,255,255,0.82);
+    color: #4a3a32;
+    font-size: 20px;
+    box-shadow: 0 8px 20px rgba(83,60,47,0.08);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+  }
+
+  @media (max-width: 620px) {
+    .ambient-bg .b3 { right: -42px; }
+    .ambient-bg .b1 { left: -34px; }
+    .ambient-bg .dot-cloud { opacity: 0.24; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ambient-bg .bubble,
+    .ambient-bg .dot-cloud,
+    .ambient-bg .pearl {
+      animation: none;
+    }
+  }
+
+.pearl {
+  position: absolute;
+  display: block;
+  width: 18px;
+  height: 17px;
+  opacity: .62;
+  background:
+    radial-gradient(circle at 34% 28%,
+      rgba(255,255,255,.82) 0 13%,
+      rgba(191,132,107,.35) 32%,
+      rgba(146,91,70,.18) 68%,
+      rgba(119,73,57,.08) 100%);
+  border: 1.4px solid rgba(143, 86, 66, .28);
+  border-radius: 58% 42% 55% 45% / 46% 54% 41% 59%;
+  box-shadow:
+    inset 1px -1px 0 rgba(255,255,255,.28),
+    0 3px 10px rgba(111,70,53,.08);
+  transform-origin: 52% 48%;
+  animation: penPearlFloat 7s ease-in-out infinite alternate;
+}
+
+.pearl::before,
+.pearl::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+/* 手绘高光：不是完美圆，而是一小笔弧形 */
+.pearl::before {
+  width: 7px;
+  height: 4px;
+  left: 3px;
+  top: 3px;
+  border-top: 1.5px solid rgba(255,255,255,.72);
+  border-radius: 60% 40% 55% 45%;
+  transform: rotate(-18deg);
+  opacity: .8;
+}
+
+/* 轻微“铅笔边缘” */
+.pearl::after {
+  inset: -2px;
+  border: 1px solid rgba(143,86,66,.10);
+  border-radius: 45% 55% 50% 50% / 58% 42% 54% 46%;
+  transform: rotate(9deg);
+}
+
+.p1 { left: 8%;  top: 44%; transform: rotate(-7deg); animation-delay: -1s; }
+.p2 { left: 31%; bottom: 8%; width: 14px; height: 13px; transform: rotate(11deg); animation-delay: -4s; }
+.p3 { right: 8%; top: 66%; width: 21px; height: 19px; transform: rotate(-12deg); animation-delay: -6s; }
+.p4 { right: 27%; top: 11%; width: 13px; height: 12px; transform: rotate(8deg); animation-delay: -2s; }
+.p5 { left: 70%; top: 78%; width: 15px; height: 14px; transform: rotate(-4deg); animation-delay: -5s; }
+
+</style>
+
+</head>
+<body>
+  <div class="ambient-bg" aria-hidden="true">
+    <span class="bubble b1"></span>
+    <span class="bubble b2"></span>
+    <span class="bubble b3"></span>
+    <span class="bubble b4"></span>
+    <span class="bubble b5"></span>
+    <span class="bubble b6"></span>
+    <span class="dot-cloud d1"></span>
+    <span class="dot-cloud d2"></span>
+    <span class="pearl p1"></span>
+    <span class="pearl p2"></span>
+    <span class="pearl p3"></span>
+    <span class="pearl p4"></span>
+    <span class="pearl p5"></span>
+  </div>
+  <!--
+    BGM HOLDER:
+    把你找好的背景音乐命名为 bgm.m4a 或 bgm.mp3，
+    放到与 index.html 同级的 audio 文件夹：
+    audio/bgm.m4a / audio/bgm.mp3
+  -->
+  <audio id="bgmAudio" loop preload="auto"></audio>
+  <button id="globalSettingsButton" class="global-settings-button" aria-label="声音设置" title="声音设置">🎧</button>
+  <main class="app-shell">
+    <section id="homeScreen" class="screen home-screen active">
+      <div class="brand-card">
+        <div class="brand-kicker">LINK GAME</div>
+        <h1>盆の连连看🧋</h1>
+        <p class="brand-subtitle">盆盆对接中🛸。。</p>
+
+        <div class="difficulty-panel">
+          <div class="section-title">选择难度</div>
+          <div class="difficulty-grid">
+            <button class="difficulty-card" data-mode="easy">
+              <span class="difficulty-name">轻松</span>
+              <span class="difficulty-size">4 × 4</span>
+              <span class="difficulty-note">微微一盆很倾城</span>
+            </button>
+            <button class="difficulty-card selected" data-mode="normal">
+              <span class="difficulty-badge">推荐</span>
+              <span class="difficulty-name">普通</span>
+              <span class="difficulty-size">10 × 10</span>
+              <span class="difficulty-note">只是一些盆，不多也不少</span>
+            </button>
+            <button class="difficulty-card" data-mode="hard">
+              <span class="difficulty-name">困难</span>
+              <span class="difficulty-size">10 × 14</span>
+              <span class="difficulty-note">盆山盆海</span>
+            </button>
+          </div>
+        </div>
+
+        <button id="startButton" class="primary-button">开始游戏</button>
+        <button id="rulesButton" class="text-button">游戏说明</button>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="screen game-screen">
+      <header class="game-header">
+        <button id="backButton" class="icon-button" aria-label="返回首页">←</button>
+        <div class="game-title-wrap">
+          <div class="game-title">盆の连连看🧋</div>
+          <div id="modeLabel" class="game-mode">普通 · 10 × 10</div>
+        </div>
+        <div></div>
+      </header>
+
+      <section class="status-bar">
+        <div class="status-item">
+          <span class="status-label">时间</span>
+          <strong id="timer">00:00</strong>
+        </div>
+        <div class="status-item">
+          <span class="status-label">进度</span>
+          <strong><span id="matchedCount">0</span>/<span id="totalPairs">0</span></strong>
+        </div>
+        <div class="status-item">
+          <span class="status-label">提示</span>
+          <strong id="hintCount">0</strong>
+        </div>
+      </section>
+
+      <section class="board-wrap">
+        <div id="gameBoard" class="game-board" aria-label="连连看棋盘"></div>
+        <svg id="pathLayer" class="path-layer" aria-hidden="true"></svg>
+      </section>
+
+      <div id="toast" class="toast" role="status"></div>
+
+      <footer class="game-actions">
+        <button id="hintButton" class="action-button">
+          <span class="action-icon">✦</span>
+          <span>提示</span>
+        </button>
+        <button id="shuffleButton" class="action-button">
+          <span class="action-icon">⤨</span>
+          <span>洗牌</span>
+        </button>
+        <button id="restartButton" class="action-button">
+          <span class="action-icon">↻</span>
+          <span>重新开始</span>
+        </button>
+      </footer>
+    </section>
+  </main>
+
+  
+  <div id="settingsModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="settingsModal"></div>
+    <div class="modal-card settings-card">
+      <div class="modal-emoji">🎧</div>
+      <h2>声音设置</h2>
+
+      <div class="volume-row">
+        <div class="volume-label">
+          <span>游戏音效</span>
+          <strong id="sfxVolumeValue">50%</strong>
+        </div>
+        <input id="sfxVolumeSlider" class="volume-slider" type="range" min="0" max="100" value="50" step="1">
+      </div>
+
+      <div class="volume-row">
+        <div class="volume-label">
+          <span>背景音乐</span>
+          <strong id="musicVolumeValue">50%</strong>
+        </div>
+        <input id="musicVolumeSlider" class="volume-slider" type="range" min="0" max="100" value="50" step="1">
+</div>
+<button class="primary-button small" data-close-modal="settingsModal">好啦</button>
+    </div>
+  </div>
+
+<div id="rulesModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="rulesModal"></div>
+    <div class="modal-card">
+      <div class="modal-emoji">🧋</div>
+      <h2>怎么玩？</h2>
+      <p>点击两张相同图片。如果它们之间能用最多两次转弯连接，就会成功消除。</p>
+      <p>路线可以从棋盘外侧绕行，外圈四个转角也可以作为拐点。没有可消除组合时，游戏会自动洗牌。</p>
+      <button class="primary-button small" data-close-modal="rulesModal">知道啦</button>
+    </div>
+  </div>
+
+  <div id="winModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card win-card">
+      <div class="confetti">✦ · ✧ · ✦</div>
+      <div class="modal-emoji">🎉</div>
+      <h2 id="winMessage">恭喜获得“识盆大师”称号！</h2>
+      <div class="result-grid">
+        <div>
+          <span>用时</span>
+          <strong id="finalTime">00:00</strong>
+        </div>
+        <div>
+          <span>提示</span>
+          <strong id="finalHints">0</strong>
+        </div>
+      </div>
+      <button id="playAgainButton" class="primary-button small">再玩一次</button>
+      <button id="homeButton" class="text-button">返回首页</button>
+    </div>
+  </div>
+
+  <script>
+const MODES = {
+  easy:   { rows: 4,  cols: 4,  label: "轻松 · 4 × 4" },
+  normal: { rows: 10, cols: 10, label: "普通 · 10 × 10" },
+  hard:   { rows: 14, cols: 10, label: "困难 · 10 × 14" }
+};
+
+// 只需要把你的图片放进 images 文件夹，文件名保持 dy01、dy02……
+// 默认会自动尝试 jpg / png / jpeg / webp 四种扩展名。
+const IMAGE_KEYS = [
+  "dy01", "dy02", "dy03", "dy04",
+  "dy05", "dy06", "dy07", "dy08",
+  "dy09", "dy10", "dy11", "dy12"
+];
+
+const IMAGE_EXTENSIONS = ["jpg", "png", "jpeg", "webp"];
+
+const WIN_MESSAGES = [
+  '恭喜获得“识盆大师”称号！',
+  '这都认得出来，是不是暗恋盆？',
+  '这个盆怎么和我长得一模一样😄',
+  '盆本无像~',
+  '今日运势：大盆',
+  '都被消掉了。。盆不嘻嘻。。'
+];
+
+let currentMode = "normal";
+let rows = 10;
+let cols = 10;
+let board = [];
+let selected = null;
+let matchedPairs = 0;
+let totalPairs = 0;
+let hintCount = 0;
+let elapsedSeconds = 0;
+let timerHandle = null;
+let interactionLocked = false;
+let toastHandle = null;
+
+let audioContext = null;
+let sfxVolume = Number(localStorage.getItem("penpenSfxDisplay") ?? 0.50);
+let musicVolume = Number(localStorage.getItem("penpenMusicDisplay") ?? 0.50);
+let bgmStarted = false;
+let bgmReady = false;
+let bgmSourceIndex = 0;
+
+const bgmAudio = document.getElementById("bgmAudio");
+const BGM_SOURCES = [
+  "audio/bgm.m4a",
+  "audio/bgm.mp3"
+];
+
+function ensureAudio() {
+  if (!audioContext) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+    audioContext = new AudioCtx();
+  }
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
+  }
+  return audioContext;
+}
+
+function tone(freq, duration = 0.08, type = "sine", baseVolume = 0.05, delay = 0, endFreq = null) {
+  if (sfxVolume <= 0) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+
+  const start = ctx.currentTime + delay;
+  const osc = ctx.createOscillator();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, start);
+  if (endFreq) {
+    osc.frequency.exponentialRampToValueAtTime(Math.max(60, endFreq), start + duration);
+  }
+
+  // 稍微削掉最尖的高频，保留电子感但不刺耳
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(1900, start);
+  filter.Q.setValueAtTime(0.45, start);
+
+  const sfxGain = sfxVolume * 2.0; // UI 50% = 旧版实际100%
+  const v = Math.max(0.0002, baseVolume * sfxGain);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(v, start + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(start);
+  osc.stop(start + duration + 0.04);
+}
+
+function noiseBurst(duration = 0.10, baseVolume = 0.025, delay = 0, lowpass = 2200) {
+  if (sfxVolume <= 0) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+
+  const length = Math.max(1, Math.floor(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let i = 0; i < length; i++) {
+    const envelope = Math.pow(1 - i / length, 1.15);
+    data[i] = (Math.random() * 2 - 1) * envelope;
+  }
+
+  const source = ctx.createBufferSource();
+  const hp = ctx.createBiquadFilter();
+  const lp = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  const start = ctx.currentTime + delay;
+
+  hp.type = "highpass";
+  hp.frequency.setValueAtTime(180, start);
+  lp.type = "lowpass";
+  lp.frequency.setValueAtTime(lowpass, start);
+
+  gain.gain.setValueAtTime(0.0001, start);
+  const sfxGain = sfxVolume * 2.0; // UI 50% = 旧版实际100%
+  gain.gain.linearRampToValueAtTime(baseVolume * sfxGain, start + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  source.buffer = buffer;
+  source.connect(hp);
+  hp.connect(lp);
+  lp.connect(gain);
+  gain.connect(ctx.destination);
+  source.start(start);
+}
+
+function cardShuffleSound() {
+  // 像吸奶茶时珍珠连续滑上来的“啵啵啵”
+  const seq = [
+    [0.00, 420, 360, 0.055],
+    [0.09, 455, 385, 0.058],
+    [0.18, 430, 350, 0.056],
+    [0.27, 480, 400, 0.060],
+    [0.36, 445, 365, 0.057],
+    [0.45, 500, 415, 0.060],
+    [0.54, 460, 375, 0.058],
+    [0.63, 520, 430, 0.060]
+  ];
+
+  seq.forEach(([delay, from, to, vol], index) => {
+    tone(from, 0.095, "sine", vol, delay, to);
+    if (index % 2 === 0) {
+      noiseBurst(0.035, 0.010, delay + 0.012, 950);
+    }
+  });
+}
+
+function playSound(name) {
+  if (sfxVolume <= 0) return;
+
+  switch (name) {
+    case "start":
+      tone(390, 0.08, "sine", 0.055, 0, 470);
+      tone(560, 0.11, "sine", 0.050, 0.075, 650);
+      break;
+
+    case "select":
+      tone(470, 0.07, "sine", 0.050, 0, 410);
+      break;
+
+    case "match":
+      tone(540, 0.09, "sine", 0.062, 0, 620);
+      tone(720, 0.13, "sine", 0.060, 0.085, 780);
+      break;
+
+    case "fail":
+      tone(260, 0.11, "triangle", 0.052, 0, 215);
+      tone(205, 0.13, "sine", 0.045, 0.075, 170);
+      break;
+
+    case "hint":
+      tone(590, 0.08, "sine", 0.050, 0, 660);
+      tone(760, 0.10, "sine", 0.048, 0.08, 820);
+      break;
+
+    case "shuffle":
+      cardShuffleSound();
+      break;
+
+    case "restart":
+      tone(430, 0.07, "sine", 0.050, 0, 365);
+      tone(330, 0.09, "sine", 0.044, 0.06, 290);
+      break;
+
+    case "win":
+      tone(440, 0.13, "sine", 0.050, 0);
+      tone(554, 0.14, "sine", 0.052, 0.12);
+      tone(659, 0.16, "sine", 0.054, 0.24);
+      tone(880, 0.26, "sine", 0.050, 0.39);
+      break;
+  }
+}
+
+function setBgmStatus(message) {
+  // 状态文字已隐藏。
+}
+
+function loadBgmSource(index = 0, autoplay = false) {
+  if (!bgmAudio) return;
+
+  bgmSourceIndex = index;
+
+  if (index >= BGM_SOURCES.length) {
+    bgmReady = false;
+    bgmStarted = false;
+    setBgmStatus("没有读取到 bgm.m4a / bgm.mp3");
+    return;
+  }
+
+  const src = BGM_SOURCES[index];
+  setBgmStatus(index === 0 ? "正在读取 M4A…" : "正在尝试 MP3…");
+
+  bgmAudio.removeAttribute("src");
+  bgmAudio.src = src;
+  bgmAudio.volume = Math.max(0, Math.min(1, musicVolume * 0.10));
+
+  const onReady = () => {
+    cleanup();
+    bgmReady = true;
+    setBgmStatus(index === 0 ? "M4A 已载入 ✓" : "MP3 已载入 ✓");
+
+    if (autoplay && musicVolume > 0) {
+      playLoadedBgm();
+    }
+  };
+
+  const onError = () => {
+    cleanup();
+    loadBgmSource(index + 1, autoplay);
+  };
+
+  function cleanup() {
+    bgmAudio.removeEventListener("canplay", onReady);
+    bgmAudio.removeEventListener("loadeddata", onReady);
+    bgmAudio.removeEventListener("error", onError);
+  }
+
+  bgmAudio.addEventListener("canplay", onReady, { once: true });
+  bgmAudio.addEventListener("loadeddata", onReady, { once: true });
+  bgmAudio.addEventListener("error", onError, { once: true });
+
+  bgmAudio.load();
+}
+
+function playLoadedBgm() {
+  if (!bgmAudio || musicVolume <= 0) return;
+
+  bgmAudio.volume = Math.max(0, Math.min(1, musicVolume * 0.10));
+
+  const promise = bgmAudio.play();
+  if (promise && typeof promise.then === "function") {
+    promise.then(() => {
+      bgmStarted = true;
+      setBgmStatus(bgmSourceIndex === 0 ? "M4A 播放中 ♪" : "MP3 播放中 ♪");
+    }).catch(() => {
+      bgmStarted = false;
+      setBgmStatus("点“试听背景音乐”开始播放");
+    });
+  }
+}
+
+function startBgm() {
+  if (!bgmAudio || musicVolume <= 0) return;
+
+  if (bgmReady) {
+    playLoadedBgm();
+    return;
+  }
+
+  loadBgmSource(0, true);
+}
+
+function tryStartBgmFromGesture() {
+  ensureAudio();
+  startBgm();
+}
+
+function updateVolumeUI() {
+  const sfxSlider = document.getElementById("sfxVolumeSlider");
+  const musicSlider = document.getElementById("musicVolumeSlider");
+  const sfxValue = document.getElementById("sfxVolumeValue");
+  const musicValue = document.getElementById("musicVolumeValue");
+
+  if (sfxSlider) sfxSlider.value = Math.round(sfxVolume * 100);
+  if (musicSlider) musicSlider.value = Math.round(musicVolume * 100);
+  if (sfxValue) sfxValue.textContent = `${Math.round(sfxVolume * 100)}%`;
+  if (musicValue) musicValue.textContent = `${Math.round(musicVolume * 100)}%`;
+
+  if (bgmAudio) {
+    bgmAudio.volume = Math.max(0, Math.min(1, musicVolume * 0.10));
+  }
+}
+
+function openSoundSettings() {
+  updateVolumeUI();
+  openModal("settingsModal");
+}
+
+
+document.querySelectorAll(".difficulty-card").forEach((button) => {
+  button.addEventListener("click", () => {
+    const mode = button.dataset.mode;
+    if (!MODES[mode]) return;
+
+    currentMode = mode;
+
+    document.querySelectorAll(".difficulty-card").forEach((card) => {
+      card.classList.toggle("selected", card === button);
+    });
+
+    playSound("select");
+  });
+});
+
+document.getElementById("startButton").addEventListener("click", () => { tryStartBgmFromGesture(); playSound("start"); startGame(currentMode); });
+document.getElementById("rulesButton").addEventListener("click", () => openModal("rulesModal"));
+document.getElementById("backButton").addEventListener("click", goHome);
+document.getElementById("restartButton").addEventListener("click", restartGame);
+document.getElementById("globalSettingsButton").addEventListener("click", openSoundSettings);
+document.getElementById("hintButton").addEventListener("click", showHint);
+document.getElementById("shuffleButton").addEventListener("click", () => shuffleRemaining(true));
+document.getElementById("sfxVolumeSlider").addEventListener("input", (e) => {
+  sfxVolume = Number(e.target.value) / 100;
+  localStorage.setItem("penpenSfxDisplay", String(sfxVolume));
+  document.getElementById("sfxVolumeValue").textContent = `${e.target.value}%`;
+});
+
+document.getElementById("sfxVolumeSlider").addEventListener("change", () => {
+  playSound("select");
+});
+
+document.getElementById("musicVolumeSlider").addEventListener("input", (e) => {
+  musicVolume = Number(e.target.value) / 100;
+  localStorage.setItem("penpenMusicDisplay", String(musicVolume));
+  document.getElementById("musicVolumeValue").textContent = `${e.target.value}%`;
+
+  if (bgmAudio) {
+    bgmAudio.volume = Math.max(0, Math.min(1, musicVolume * 0.10));
+
+    if (musicVolume <= 0) {
+          bgmStarted = false;
+      setBgmStatus("背景音乐已静音");
+    } else {
+      startBgm();
+    }
+  }
+});
+
+updateVolumeUI();
+loadBgmSource(0, false);
+
+// 移动端浏览器通常要求用户先主动点击，才允许播放声音。
+// 第一次点击页面时尝试启动 BGM。
+document.addEventListener("pointerdown", () => {
+  tryStartBgmFromGesture();
+}, { once: true });
+
+document.addEventListener("keydown", () => {
+  tryStartBgmFromGesture();
+}, { once: true });
+
+document.getElementById("playAgainButton").addEventListener("click", () => {
+  closeModal("winModal");
+  startGame(currentMode);
+});
+document.getElementById("homeButton").addEventListener("click", () => {
+  closeModal("winModal");
+  goHome();
+});
+
+document.querySelectorAll("[data-close-modal]").forEach(el => {
+  el.addEventListener("click", () => closeModal(el.dataset.closeModal));
+});
+
+function startGame(mode) {
+  currentMode = mode;
+  rows = MODES[mode].rows;
+  cols = MODES[mode].cols;
+  totalPairs = Math.floor((rows * cols) / 2);
+  matchedPairs = 0;
+  hintCount = 0;
+  elapsedSeconds = 0;
+  selected = null;
+  interactionLocked = false;
+
+  board = createBoard(rows, cols);
+
+  document.getElementById("modeLabel").textContent = MODES[mode].label;
+  document.getElementById("totalPairs").textContent = totalPairs;
+  document.getElementById("matchedCount").textContent = "0";
+  document.getElementById("hintCount").textContent = "0";
+  document.getElementById("timer").textContent = "00:00";
+
+  homeScreen.classList.remove("active");
+  gameScreen.classList.add("active");
+
+  renderBoard();
+  fitBoardToScreen();
+  startTimer();
+
+  // 极小概率首盘无解时自动调整。
+  if (!findHintPair()) {
+    shuffleRemaining(false);
+  }
+}
+
+function createBoard(r, c) {
+  // 奇数格棋盘（例如 5×5）无法全部两两配对。
+  // 因此保留 1 个空格：5×5 = 24 张图片 + 1 个中心空位，共 12 对。
+  const cellCount = r * c;
+  const pairCount = Math.floor(cellCount / 2);
+  const pairKeys = [];
+
+  for (let i = 0; i < pairCount; i++) {
+    const key = IMAGE_KEYS[i % IMAGE_KEYS.length];
+    pairKeys.push(key, key);
+  }
+
+  shuffleArray(pairKeys);
+
+  const result = Array.from({ length: r }, () => Array(c).fill(null));
+  const hasSingleEmpty = cellCount % 2 === 1;
+  const emptyIndex = hasSingleEmpty ? Math.floor(cellCount / 2) : -1;
+  let imageIndex = 0;
+
+  for (let index = 0; index < cellCount; index++) {
+    const y = Math.floor(index / c);
+    const x = index % c;
+
+    if (index === emptyIndex) {
+      result[y][x] = null;
+    } else {
+      result[y][x] = pairKeys[imageIndex++];
+    }
+  }
+
+  return result;
+}
+
+function renderBoard() {
+  gameBoard.innerHTML = "";
+  gameBoard.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  gameBoard.dataset.rows = rows;
+  gameBoard.dataset.cols = cols;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const key = board[r][c];
+      const cell = document.createElement("button");
+      cell.className = "game-cell";
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+
+      if (key === null) {
+        cell.classList.add("empty");
+        cell.disabled = true;
+      } else {
+        const img = document.createElement("img");
+        img.alt = key;
+        setImageWithFallback(img, key, 0);
+        cell.appendChild(img);
+        cell.addEventListener("click", () => handleCellClick(r, c));
+      }
+
+      gameBoard.appendChild(cell);
+    }
+  }
+
+  requestAnimationFrame(() => resizePathLayer());
+}
+
+function setImageWithFallback(img, key, extIndex) {
+  if (extIndex >= IMAGE_EXTENSIONS.length) {
+    img.removeAttribute("src");
+    img.alt = `${key}（未找到图片）`;
+    img.style.background = "#eee5dc";
+    return;
+  }
+
+  img.onerror = () => setImageWithFallback(img, key, extIndex + 1);
+  img.src = `images/${key}.${IMAGE_EXTENSIONS[extIndex]}`;
+}
+
+async function handleCellClick(r, c) {
+  if (interactionLocked || board[r][c] === null) return;
+
+  clearTransientStates();
+
+  if (!selected) {
+    selected = { r, c };
+    getCell(r, c).classList.add("selected");
+    playSound("select");
+    return;
+  }
+
+  if (selected.r === r && selected.c === c) {
+    getCell(r, c).classList.remove("selected");
+    selected = null;
+    return;
+  }
+
+  const first = { ...selected };
+  const second = { r, c };
+
+  if (board[first.r][first.c] !== board[second.r][second.c]) {
+    getCell(first.r, first.c).classList.remove("selected");
+    getCell(second.r, second.c).classList.add("invalid");
+    selected = second;
+    getCell(second.r, second.c).classList.add("selected");
+    showToast("此盆非彼盆~");
+    playSound("fail");
+    return;
+  }
+
+  const path = findConnectionPath(first.r, first.c, second.r, second.c);
+
+  if (!path) {
+    getCell(first.r, first.c).classList.remove("selected");
+    getCell(second.r, second.c).classList.add("invalid", "selected");
+    selected = second;
+    showToast("连不过去盆。。。");
+    playSound("fail");
+    return;
+  }
+
+  interactionLocked = true;
+  selected = null;
+  getCell(first.r, first.c).classList.remove("selected");
+
+  drawConnection(path);
+  playSound("match");
+  await wait(260);
+
+  const firstCell = getCell(first.r, first.c);
+  const secondCell = getCell(second.r, second.c);
+  firstCell.classList.add("removing");
+  secondCell.classList.add("removing");
+
+  await wait(180);
+  board[first.r][first.c] = null;
+  board[second.r][second.c] = null;
+  matchedPairs++;
+
+  document.getElementById("matchedCount").textContent = matchedPairs;
+  clearPath();
+  renderBoard();
+  fitBoardToScreen();
+
+  if (matchedPairs >= totalPairs) {
+    stopTimer();
+    document.getElementById("finalTime").textContent = formatTime(elapsedSeconds);
+    document.getElementById("finalHints").textContent = hintCount;
+    document.getElementById("winMessage").textContent =
+      WIN_MESSAGES[Math.floor(Math.random() * WIN_MESSAGES.length)];
+    await wait(180);
+    playSound("win");
+    openModal("winModal");
+    interactionLocked = false;
+    return;
+  }
+
+  // 如果已经没有合法组合，自动洗牌。
+  if (!findHintPair()) {
+    showToast("没有可连组合，自动洗牌啦");
+    await wait(300);
+    shuffleRemaining(false);
+  }
+
+  interactionLocked = false;
+}
+
+function findConnectionPath(r1, c1, r2, c2) {
+  if (r1 === r2 && c1 === c2) return null;
+  if (board[r1][c1] === null || board[r2][c2] === null) return null;
+  if (board[r1][c1] !== board[r2][c2]) return null;
+
+  // 给真实棋盘四周加一整圈“虚拟空格”。
+  // 真实棋盘坐标会整体 +1，因此 0 / H-1 / 0 / W-1 都属于外圈。
+  const H = rows + 2;
+  const W = cols + 2;
+  const sr = r1 + 1;
+  const sc = c1 + 1;
+  const tr = r2 + 1;
+  const tc = c2 + 1;
+
+  const dirs = [
+    [-1, 0], // up
+    [0, 1],  // right
+    [1, 0],  // down
+    [0, -1]  // left
+  ];
+
+  function isOuter(pr, pc) {
+    return pr === 0 || pc === 0 || pr === H - 1 || pc === W - 1;
+  }
+
+  function isPassable(pr, pc) {
+    if (pr < 0 || pr >= H || pc < 0 || pc >= W) return false;
+    if (pr === tr && pc === tc) return true;
+    if (pr === sr && pc === sc) return true;
+
+    // 外围一整圈，包括四个角，永远可通行。
+    if (isOuter(pr, pc)) return true;
+
+    return board[pr - 1][pc - 1] === null;
+  }
+
+  // 内部维持经典规则：最多2次转弯。
+  // 但只要实际路径经过棋盘外圈，就额外允许第3次转弯。
+  // 这专门支持例如：
+  // 下边缘 -> 底部外圈 -> 左下外角 -> 左侧外圈 -> 左边缘
+  const MAX_SEARCH_TURNS = 3;
+
+  const best = Array.from({ length: H }, () =>
+    Array.from({ length: W }, () => Array(4).fill(Infinity))
+  );
+
+  const queue = [];
+  const parents = new Map();
+
+  for (let d = 0; d < 4; d++) {
+    const nr = sr + dirs[d][0];
+    const nc = sc + dirs[d][1];
+    if (!isPassable(nr, nc)) continue;
+
+    best[nr][nc][d] = 0;
+    queue.push({ r: nr, c: nc, d, turns: 0 });
+    parents.set(stateKey(nr, nc, d), { r: sr, c: sc, d: -1 });
+  }
+
+  let head = 0;
+  const candidates = [];
+
+  while (head < queue.length) {
+    const cur = queue[head++];
+
+    if (cur.r === tr && cur.c === tc) {
+      candidates.push({ ...cur });
+      // 不马上 break：
+      // 继续找，优先保证能拿到转弯更少、规则更合适的路线。
+      continue;
+    }
+
+    for (let nd = 0; nd < 4; nd++) {
+      const nr = cur.r + dirs[nd][0];
+      const nc = cur.c + dirs[nd][1];
+
+      if (!isPassable(nr, nc)) continue;
+
+      const nextTurns = cur.turns + (nd === cur.d ? 0 : 1);
+      if (nextTurns > MAX_SEARCH_TURNS) continue;
+      if (best[nr][nc][nd] <= nextTurns) continue;
+
+      best[nr][nc][nd] = nextTurns;
+      parents.set(
+        stateKey(nr, nc, nd),
+        { r: cur.r, c: cur.c, d: cur.d }
+      );
+
+      queue.push({
+        r: nr,
+        c: nc,
+        d: nd,
+        turns: nextTurns
+      });
+    }
+  }
+
+  if (!candidates.length) return null;
+
+  function rebuildPath(endState) {
+    const raw = [{ r: endState.r, c: endState.c }];
+    let cr = endState.r;
+    let cc = endState.c;
+    let cd = endState.d;
+
+    while (!(cr === sr && cc === sc)) {
+      const parent = parents.get(stateKey(cr, cc, cd));
+      if (!parent) return null;
+
+      raw.push({ r: parent.r, c: parent.c });
+      cr = parent.r;
+      cc = parent.c;
+      cd = parent.d;
+
+      if (cd === -1) break;
+    }
+
+    raw.reverse();
+    return raw;
+  }
+
+  // 先找经典 <=2 转弯路线。
+  candidates.sort((a, b) => a.turns - b.turns);
+
+  for (const candidate of candidates) {
+    if (candidate.turns > 2) continue;
+
+    const raw = rebuildPath(candidate);
+    if (raw) return simplifyPath(raw);
+  }
+
+  // 如果经典路线不存在，再接受“经过外圈的3转路线”。
+  // 这样外圈四个角就真的能参与寻路。
+  for (const candidate of candidates) {
+    if (candidate.turns !== 3) continue;
+
+    const raw = rebuildPath(candidate);
+    if (!raw) continue;
+
+    const touchesOuter = raw.some(p => isOuter(p.r, p.c));
+    if (touchesOuter) {
+      return simplifyPath(raw);
+    }
+  }
+
+  return null;
+}
+
+function simplifyPath(points) {
+  if (points.length <= 2) return points;
+
+  const result = [points[0]];
+
+  for (let i = 1; i < points.length - 1; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const c = points[i + 1];
+
+    const dir1 = [b.r - a.r, b.c - a.c];
+    const dir2 = [c.r - b.r, c.c - b.c];
+
+    if (dir1[0] !== dir2[0] || dir1[1] !== dir2[1]) {
+      result.push(b);
+    }
+  }
+
+  result.push(points[points.length - 1]);
+  return result;
+}
+
+function stateKey(r, c, d) {
+  return `${r},${c},${d}`;
+}
+
+function drawConnection(path) {
+  resizePathLayer();
+  const boardRect = gameBoard.getBoundingClientRect();
+  const wrapRect = document.querySelector(".board-wrap").getBoundingClientRect();
+
+  const firstRealCell = getCell(0, 0) || gameBoard.querySelector(".game-cell");
+  const cellRect = firstRealCell.getBoundingClientRect();
+  const gap = parseFloat(getComputedStyle(gameBoard).gap) || 0;
+  const padLeft = gameBoard.clientLeft + parseFloat(getComputedStyle(gameBoard).paddingLeft);
+  const padTop = gameBoard.clientTop + parseFloat(getComputedStyle(gameBoard).paddingTop);
+  const cellW = cellRect.width;
+  const cellH = cellRect.height;
+
+  function gridPoint(p) {
+    // padded coordinate: 1..cols / 1..rows 对应实际棋盘格，0 和 cols+1 / rows+1 为外围
+    const xInside = padLeft + (p.c - 1) * (cellW + gap) + cellW / 2;
+    const yInside = padTop + (p.r - 1) * (cellH + gap) + cellH / 2;
+
+    return {
+      x: (boardRect.left - wrapRect.left) + xInside,
+      y: (boardRect.top - wrapRect.top) + yInside
+    };
+  }
+
+  const pts = path.map(gridPoint);
+  const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  polyline.setAttribute("class", "path-line");
+  polyline.setAttribute("points", pts.map(p => `${p.x},${p.y}`).join(" "));
+  pathLayer.innerHTML = "";
+  pathLayer.appendChild(polyline);
+}
+
+function clearPath() {
+  pathLayer.innerHTML = "";
+}
+
+function resizePathLayer() {
+  const wrap = document.querySelector(".board-wrap");
+  pathLayer.setAttribute("viewBox", `0 0 ${wrap.clientWidth} ${wrap.clientHeight}`);
+}
+
+function showHint() {
+  if (interactionLocked) return;
+
+  const pair = findHintPair();
+  if (!pair) {
+    showToast("暂时没有可连组合，正在洗牌");
+    shuffleRemaining(false);
+    return;
+  }
+
+  hintCount++;
+  document.getElementById("hintCount").textContent = hintCount;
+  playSound("hint");
+
+  const [a, b] = pair;
+  getCell(a.r, a.c).classList.add("hint");
+  getCell(b.r, b.c).classList.add("hint");
+
+  setTimeout(() => {
+    getCell(a.r, a.c)?.classList.remove("hint");
+    getCell(b.r, b.c)?.classList.remove("hint");
+  }, 1450);
+}
+
+function findHintPair() {
+  const byKey = new Map();
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const key = board[r][c];
+      if (key === null) continue;
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push({ r, c });
+    }
+  }
+
+  for (const positions of byKey.values()) {
+    for (let i = 0; i < positions.length; i++) {
+      for (let j = i + 1; j < positions.length; j++) {
+        const a = positions[i];
+        const b = positions[j];
+        if (findConnectionPath(a.r, a.c, b.r, b.c)) {
+          return [a, b];
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function shuffleRemaining(manual) {
+  if (interactionLocked) return;
+  playSound("shuffle");
+
+  const positions = [];
+  const values = [];
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (board[r][c] !== null) {
+        positions.push({ r, c });
+        values.push(board[r][c]);
+      }
+    }
+  }
+
+  if (values.length <= 2) return;
+
+  let solved = false;
+  for (let attempt = 0; attempt < 80; attempt++) {
+    shuffleArray(values);
+    positions.forEach((p, i) => {
+      board[p.r][p.c] = values[i];
+    });
+
+    if (findHintPair()) {
+      solved = true;
+      break;
+    }
+  }
+
+  selected = null;
+  renderBoard();
+  fitBoardToScreen();
+  clearPath();
+
+  if (manual) {
+    showToast(solved ? "已重新排列剩余图片" : "已洗牌");
+  }
+}
+
+function restartGame() {
+  if (!gameScreen.classList.contains("active")) return;
+  playSound("restart");
+  startGame(currentMode);
+  showToast("重新开始啦");
+}
+
+function goHome() {
+  stopTimer();
+  selected = null;
+  clearPath();
+  gameScreen.classList.remove("active");
+  homeScreen.classList.add("active");
+}
+
+function getCell(r, c) {
+  return gameBoard.querySelector(`.game-cell[data-row="${r}"][data-col="${c}"]`);
+}
+
+function clearTransientStates() {
+  gameBoard.querySelectorAll(".game-cell").forEach(cell => {
+    cell.classList.remove("invalid", "hint");
+  });
+}
+
+function startTimer() {
+  stopTimer();
+  timerHandle = setInterval(() => {
+    elapsedSeconds++;
+    document.getElementById("timer").textContent = formatTime(elapsedSeconds);
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerHandle) {
+    clearInterval(timerHandle);
+    timerHandle = null;
+  }
+}
+
+function formatTime(total) {
+  const m = Math.floor(total / 60).toString().padStart(2, "0");
+  const s = (total % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function openModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function showToast(message) {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.classList.add("show");
+  clearTimeout(toastHandle);
+  toastHandle = setTimeout(() => toast.classList.remove("show"), 1600);
+}
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function fitBoardToScreen() {
+  if (!gameScreen.classList.contains("active")) return;
+
+  const isMobile = window.matchMedia("(max-width: 620px)").matches;
+  const wrap = document.querySelector(".board-wrap");
+  const board = gameBoard;
+
+  if (!isMobile) {
+    board.style.width = "";
+    return;
+  }
+
+  const styles = getComputedStyle(board);
+  const gap = parseFloat(styles.gap) || 3;
+  const horizontalPadding =
+    (parseFloat(styles.paddingLeft) || 0) +
+    (parseFloat(styles.paddingRight) || 0);
+
+  const availableWidth = Math.max(280, wrap.clientWidth);
+  const idealWidth = availableWidth;
+
+  // 手机竖屏始终以“列数”决定单格大小。
+  // 困难模式增加行数而不是增加列数，因此不会把图片压得更小。
+  board.style.width = `${idealWidth}px`;
+
+  // 如果困难模式高度较长，board-wrap 会在可用高度里尽量占满；
+  // 仍保持图片为正方形，不做非等比压缩。
+}
+
+window.addEventListener("resize", () => {
+  fitBoardToScreen();
+  resizePathLayer();
+});
+
+</script>
+</body>
+</html>
